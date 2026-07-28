@@ -82,6 +82,8 @@ export default function Dashboard() {
   const [doneCount, setDoneCount] = useState(0);
   const [activeStep, setActiveStep] = useState(-1);
   const [feed, setFeed] = useState<FeedLine[]>([]);
+  /** lead_id -> what the agent last decided, so every lead on screen is accounted for. */
+  const [leadOutcome, setLeadOutcome] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<(DraftResult & { signalType: string }) | null>(null);
   const [declined, setDeclined] = useState<SignalResult | null>(null);
   const feedIdRef = useRef(0);
@@ -114,15 +116,27 @@ export default function Dashboard() {
   }, [say]);
 
   const loadLeads = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const [{ data, error }, { data: runs }] = await Promise.all([
+      supabase.from('leads').select('*').order('created_at', { ascending: false }),
+      // Latest outcome per lead, so a lead that was capped or declined says so
+      // instead of looking identical to one that was never processed.
+      supabase
+        .from('agent_runs')
+        .select('lead_id, run_status, created_at')
+        .order('created_at', { ascending: true }),
+    ]);
+
     if (error) {
       say(`Could not load leads: ${error.message}`, 'error');
-    } else {
-      setLeads((data ?? []) as Lead[]);
+      return;
     }
+    setLeads((data ?? []) as Lead[]);
+
+    const latest: Record<string, string> = {};
+    for (const r of (runs ?? []) as { lead_id: string | null; run_status: string }[]) {
+      if (r.lead_id) latest[r.lead_id] = r.run_status; // ascending, so last wins
+    }
+    setLeadOutcome(latest);
   }, [say]);
 
   useEffect(() => {
@@ -252,7 +266,7 @@ export default function Dashboard() {
           <BrandMark />
           <div className="flex items-center gap-2">
             <span className="gt-badge gt-badge-neutral">
-              {sweptCount} leads from county records
+              {sweptCount} of {leads.length} leads auto-sourced
             </span>
             <span className="gt-badge gt-badge-blue">Sweep runs daily 7:00 AM</span>
           </div>
@@ -319,6 +333,9 @@ export default function Dashboard() {
                     </div>
 
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {/* What the agent decided — so every lead in the queue
+                          reconciles against the sweep summary above. */}
+                      <OutcomeBadge outcome={leadOutcome[lead.id]} />
                       {lead.agent_email ? (
                         <span className="gt-badge gt-badge-green">
                           {lead.contact_type === 'builder' ? 'builder' : 'agent'} contact
@@ -591,6 +608,46 @@ export default function Dashboard() {
         </footer>
       </main>
     </div>
+  );
+}
+
+/**
+ * Every lead shows what the agent decided about it. A lead with no badge was
+ * genuinely never processed — which is itself information, and distinct from
+ * one that was reviewed and turned down (spec §11.3).
+ */
+function OutcomeBadge({ outcome }: { outcome?: string }) {
+  if (!outcome) return <span className="gt-badge gt-badge-neutral">not yet run</span>;
+
+  const map: Record<string, { label: string; cls: string; title: string }> = {
+    signal_found: {
+      label: 'drafted',
+      cls: 'gt-badge-green',
+      title: 'Signal found — outreach drafted and sent to the pipeline.',
+    },
+    capped: {
+      label: 'held back by cap',
+      cls: 'gt-badge-amber',
+      title: 'Real signal, but ranked outside the daily cap. Nothing was drafted.',
+    },
+    no_signal: {
+      label: 'declined',
+      cls: 'gt-badge-neutral',
+      title: 'The agent reviewed this lead and judged it not worth outreach.',
+    },
+    error: {
+      label: 'errored',
+      cls: 'gt-badge-amber',
+      title: 'A step failed on this lead — see agent_runs.',
+    },
+  };
+
+  const m = map[outcome];
+  if (!m) return null;
+  return (
+    <span className={`gt-badge ${m.cls}`} title={m.title}>
+      {m.label}
+    </span>
   );
 }
 
