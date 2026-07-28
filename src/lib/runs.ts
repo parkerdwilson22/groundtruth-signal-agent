@@ -16,6 +16,8 @@ export async function recordRun(args: {
   status: AgentRunStatus;
   step: string;
   errorDetail?: string | null;
+  /** Set by the sweep so its runs group into one identifiable batch. */
+  batchId?: string | null;
 }): Promise<void> {
   try {
     const { error } = await supabase.from('agent_runs').insert({
@@ -23,6 +25,7 @@ export async function recordRun(args: {
       run_status: args.status,
       step: args.step,
       error_detail: args.errorDetail ?? null,
+      batch_id: args.batchId ?? null,
     });
     // Swallowing the failure is right — logging must never crash the run it
     // describes — but swallowing it *silently* hid a real bug once (the

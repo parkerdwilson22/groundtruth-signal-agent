@@ -42,13 +42,19 @@ export async function POST(req: Request) {
     }
   }
 
+  // One id for this whole sweep, so its runs are identifiable as a batch
+  // rather than inferred from timestamps.
+  const batchId = crypto.randomUUID();
+
   const summary = {
+    batchId,
     swept: 0,
     newLeads: 0,
     enriched: 0,
     insufficientEnrichment: 0,
     signalFound: 0,
     noSignal: 0,
+    declinedAfterEnrichment: 0,
     capped: 0,
     errors: 0,
     processed: [] as { address: string; outcome: string; outreachSubject?: string }[],
@@ -102,7 +108,7 @@ export async function POST(req: Request) {
       if (error) {
         // Race with a concurrent sweep or a genuine DB error — either way,
         // don't let one bad insert kill the whole run.
-        await recordRun({ leadId: null, status: 'error', step: 'sweep-insert', errorDetail: error.message });
+        await recordRun({ batchId, leadId: null, status: 'error', step: 'sweep-insert', errorDetail: error.message });
         summary.errors++;
         continue;
       }
@@ -110,8 +116,67 @@ export async function POST(req: Request) {
     }
     summary.newLeads = newLeads.length;
 
-    // --- Enrich each new lead (AI + web search, honest insufficient-data) ---
+    // --- TRIAGE: cheap signal pass on raw permit data ----------------------
+    // Runs BEFORE enrichment on purpose. Enrichment is the expensive step
+    // (web search, ~10x the cost of a signal call), so it must sit behind the
+    // cap, not in front of it — otherwise county volume, not configuration,
+    // decides the daily spend. Cheap triage first, expensive research only on
+    // survivors: the same shape as real sales qualification.
+    const candidates: { lead: Lead; signal: SignalResult; signalId: string }[] = [];
     for (const lead of newLeads) {
+      try {
+        const outcome = await runSignalDetection(lead, signalTypes);
+        if ('refused' in outcome) {
+          await recordRun({ batchId, leadId: lead.id, status: 'error', step: 'triage', errorDetail: 'Model declined.' });
+          summary.errors++;
+          continue;
+        }
+
+        const { data: signalRow, error } = await supabase
+          .from('signals')
+          .insert({
+            lead_id: lead.id,
+            signal: outcome.signal,
+            signal_type: outcome.signalType,
+            confidence: outcome.confidence,
+            reasoning: outcome.reasoning,
+          })
+          .select()
+          .single();
+
+        if (error) throw new Error(`Persist signal failed: ${error.message}`);
+
+        if (outcome.signal) {
+          candidates.push({ lead, signal: outcome, signalId: signalRow.id });
+        } else {
+          await recordRun({ batchId, leadId: lead.id, status: 'no_signal', step: 'triage' });
+          summary.noSignal++;
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        await recordRun({ batchId, leadId: lead.id, status: 'error', step: 'triage', errorDetail: message });
+        summary.errors++;
+      }
+    }
+
+    // --- Rank by confidence, take the top N, cap the rest -------------------
+    candidates.sort((a, b) => b.signal.confidence - a.signal.confidence);
+    const shortlist = candidates.slice(0, cap);
+    const overflow = candidates.slice(cap);
+
+    for (const { lead } of overflow) {
+      await recordRun({ batchId, leadId: lead.id,
+        status: 'capped',
+        step: 'triage',
+        errorDetail: `Real signal on triage, but ranked outside today's cap of ${cap}.`,
+      });
+      summary.capped++;
+    }
+
+    // --- ENRICH only the shortlist, then re-score with the better data -----
+    const toProcess: typeof shortlist = [];
+    for (const entry of shortlist) {
+      const { lead } = entry;
       try {
         const detail = lead.source_detail as {
           zipCode?: string;
@@ -148,7 +213,6 @@ export async function POST(req: Request) {
         if (result.status === 'enriched') summary.enriched++;
         else summary.insufficientEnrichment++;
 
-        // Reflect enrichment into our in-memory copy for the signal step below.
         Object.assign(lead, {
           listing_agent: result.contactName,
           agent_email: result.contactEmail,
@@ -158,72 +222,49 @@ export async function POST(req: Request) {
           days_on_market: result.daysOnMarket ?? lead.days_on_market,
           price: result.price ?? lead.price,
         });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        await recordRun({ leadId: lead.id, status: 'error', step: 'enrich', errorDetail: message });
-        summary.errors++;
-      }
-    }
 
-    // --- Signal detection on every new lead — judgment, not a data fetch ----
-    const candidates: { lead: Lead; signal: SignalResult; signalId: string }[] = [];
-    for (const lead of newLeads) {
-      try {
-        const outcome = await runSignalDetection(lead, signalTypes);
-        if ('refused' in outcome) {
-          await recordRun({ leadId: lead.id, status: 'error', step: 'signal', errorDetail: 'Model declined.' });
-          summary.errors++;
+        // Re-score with what enrichment revealed. This is what catches the
+        // case where a permit looks like "new build, no media" on paper but
+        // is in fact already listed with a full photo set — the agent should
+        // be allowed to change its mind when it learns more.
+        const rescored = await runSignalDetection(lead, signalTypes);
+        if ('refused' in rescored) {
+          toProcess.push(entry);
           continue;
         }
 
-        const { data: signalRow, error } = await supabase
-          .from('signals')
-          .insert({
-            lead_id: lead.id,
-            signal: outcome.signal,
-            signal_type: outcome.signalType,
-            confidence: outcome.confidence,
-            reasoning: outcome.reasoning,
-          })
-          .select()
-          .single();
+        await supabase.from('signals').insert({
+          lead_id: lead.id,
+          signal: rescored.signal,
+          signal_type: rescored.signalType,
+          confidence: rescored.confidence,
+          reasoning: `[after enrichment] ${rescored.reasoning}`,
+        });
 
-        if (error) throw new Error(`Persist signal failed: ${error.message}`);
-
-        if (outcome.signal) {
-          candidates.push({ lead, signal: outcome, signalId: signalRow.id });
-        } else {
-          await recordRun({ leadId: lead.id, status: 'no_signal', step: 'signal' });
+        if (!rescored.signal) {
+          await recordRun({ batchId, leadId: lead.id,
+            status: 'no_signal',
+            step: 'rescore',
+            errorDetail: `Passed triage but declined after enrichment: ${rescored.reasoning}`,
+          });
           summary.noSignal++;
+          summary.declinedAfterEnrichment++;
+          continue;
         }
+
+        toProcess.push({ ...entry, signal: rescored });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await recordRun({ leadId: lead.id, status: 'error', step: 'signal', errorDetail: message });
+        await recordRun({ batchId, leadId: lead.id, status: 'error', step: 'enrich', errorDetail: message });
         summary.errors++;
       }
-    }
-
-    // --- Rank by confidence, take the top N, cap the rest -------------------
-    candidates.sort((a, b) => b.signal.confidence - a.signal.confidence);
-    const toProcess = candidates.slice(0, cap);
-    const overflow = candidates.slice(cap);
-
-    for (const { lead } of overflow) {
-      await recordRun({
-        leadId: lead.id,
-        status: 'capped',
-        step: 'signal',
-        errorDetail: `Real signal, but ranked outside today's cap of ${cap}.`,
-      });
-      summary.capped++;
     }
 
     // --- Full chain for the top N — this is what reaches Zapier -------------
     for (const { lead, signal, signalId } of toProcess) {
       try {
         if (lead.lat == null || lead.lon == null) {
-          await recordRun({
-            leadId: lead.id,
+          await recordRun({ batchId, leadId: lead.id,
             status: 'error',
             step: 'shoot-window',
             errorDetail: 'Lead has no coordinates.',
@@ -234,8 +275,7 @@ export async function POST(req: Request) {
 
         const win = await fetchShootWindow(lead.lat, lead.lon);
         if ('insufficientData' in win) {
-          await recordRun({
-            leadId: lead.id,
+          await recordRun({ batchId, leadId: lead.id,
             status: 'error',
             step: 'shoot-window',
             errorDetail: win.reason,
@@ -254,7 +294,7 @@ export async function POST(req: Request) {
           win,
         );
         if ('refused' in draftOutcome) {
-          await recordRun({ leadId: lead.id, status: 'error', step: 'draft', errorDetail: 'Model declined.' });
+          await recordRun({ batchId, leadId: lead.id, status: 'error', step: 'draft', errorDetail: 'Model declined.' });
           summary.errors++;
           continue;
         }
@@ -284,7 +324,7 @@ export async function POST(req: Request) {
           .insert({ lead_id: lead.id, draft_id: draft.id, stage: 'new_signal' });
         if (pipelineError) throw new Error(`Pipeline insert failed: ${pipelineError.message}`);
 
-        await recordRun({ leadId: lead.id, status: 'signal_found', step: 'sweep-draft' });
+        await recordRun({ batchId, leadId: lead.id, status: 'signal_found', step: 'sweep-draft' });
         summary.signalFound++;
         summary.processed.push({
           address: lead.address,
@@ -293,7 +333,7 @@ export async function POST(req: Request) {
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await recordRun({ leadId: lead.id, status: 'error', step: 'sweep-draft', errorDetail: message });
+        await recordRun({ batchId, leadId: lead.id, status: 'error', step: 'sweep-draft', errorDetail: message });
         summary.errors++;
       }
     }
@@ -301,7 +341,7 @@ export async function POST(req: Request) {
     return NextResponse.json(summary);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await recordRun({ leadId: null, status: 'error', step: 'sweep', errorDetail: message });
+    await recordRun({ batchId, leadId: null, status: 'error', step: 'sweep', errorDetail: message });
     return NextResponse.json({ error: message, ...summary }, { status: 500 });
   }
 }

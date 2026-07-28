@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { BrandMark } from '@/components/Brand';
+import LastSweep from '@/components/LastSweep';
 import type {
   Lead,
   Draft,
+  Signal,
   PipelineEntry,
   PipelineStage,
   SignalResult,
@@ -20,7 +22,11 @@ type BoardRow = PipelineEntry & {
     Lead,
     'address' | 'city' | 'state' | 'price' | 'agent_email' | 'listing_agent' | 'contact_type'
   > | null;
-  drafts: Pick<Draft, 'outreach_subject' | 'best_shoot_window' | 'shoot_date_iso'> | null;
+  drafts:
+    | (Pick<Draft, 'outreach_subject' | 'best_shoot_window' | 'shoot_date_iso'> & {
+        signals: Pick<Signal, 'signal_type' | 'confidence' | 'reasoning'> | null;
+      })
+    | null;
 };
 
 /** "2026-07-30" -> "Thu, Jul 30". Avoids parsing the human-readable prose. */
@@ -59,10 +65,10 @@ const COLUMNS: { stage: PipelineStage; label: string }[] = [
 
 function clockNow() {
   return new Date().toLocaleTimeString('en-US', {
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false,
+    hour12: true,
   });
 }
 
@@ -95,7 +101,8 @@ export default function Dashboard() {
       .select(
         'id, lead_id, draft_id, stage, stage_locked, updated_at, ' +
           'leads(address, city, state, price, agent_email, listing_agent, contact_type), ' +
-          'drafts(outreach_subject, best_shoot_window, shoot_date_iso)',
+          'drafts(outreach_subject, best_shoot_window, shoot_date_iso, ' +
+          'signals(signal_type, confidence, reasoning))',
       )
       .order('updated_at', { ascending: false });
 
@@ -253,6 +260,9 @@ export default function Dashboard() {
       </header>
 
       <main className="mx-auto w-full max-w-[1180px] px-6 py-6">
+        {/* ---------- evidence that the autonomous run happened (§12 Surface) ---------- */}
+        <LastSweep />
+
         {/* ---------- outcome metrics (§10.5 — outcomes, never time saved) ---------- */}
         <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Signals surfaced" value={surfaced} />
@@ -499,7 +509,23 @@ export default function Dashboard() {
                         </div>
                         <div className="gt-mono mt-0.5 text-[10.5px] text-[var(--gt-muted-soft)]">
                           {row.leads?.city}
+                          {row.leads?.price
+                            ? ` · $${Number(row.leads.price).toLocaleString()}`
+                            : ''}
                         </div>
+
+                        {/* Why this lead is here — the signal, not just the address. */}
+                        {row.drafts?.signals?.signal_type && (
+                          <div className="mt-1.5">
+                            {/* Older rows carry free-text signal types that can be
+                                long, so this badge wraps rather than overflowing. */}
+                            <span className="gt-badge gt-badge-blue !whitespace-normal text-left leading-tight">
+                              {row.drafts.signals.signal_type.replace(/_/g, ' ')}
+                              {row.drafts.signals.confidence != null &&
+                                ` · ${Math.round(Number(row.drafts.signals.confidence) * 100)}%`}
+                            </span>
+                          </div>
+                        )}
 
                         {row.leads?.agent_email && (
                           <div className="gt-mono mt-1.5 truncate text-[10.5px] text-[var(--gt-green)]">
@@ -511,6 +537,15 @@ export default function Dashboard() {
                             {shortDate(row.drafts?.shoot_date_iso)}
                           </div>
                         )}
+
+                        <div className="gt-mono mt-1 text-[10px] text-[var(--gt-muted-soft)]">
+                          {new Date(row.updated_at).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </div>
 
                         <div className="mt-2 flex items-center gap-1.5">
                           <select
