@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/* GroundTruth — Smoove Visuals brand.
+   Blue is the action colour (from the logo mark), near-black the structural
+   colour, on a light neutral ground. */
+:root {
+  --gt-bg: #f5f6f8;
+  --gt-surface: #ffffff;
+  --gt-surface-sunk: #eef0f3;
+  --gt-border: #e0e4e9;
+  --gt-border-strong: #c3cad3;
+  --gt-text: #0d0d0f;
+  --gt-muted: #616d7a;
+  --gt-muted-soft: #8a95a1;
+
+  /* Brand blue, from the Smoove Visuals mark */
+  --gt-blue: #1274bc;
+  --gt-blue-hover: #0f63a2;
+  --gt-blue-soft: #e9f2fa;
+  --gt-blue-line: #b9d8ef;
+
+  /* Structural black, from the mark */
+  --gt-black: #0d0d0f;
+
+  --gt-green: #17864a;
+  --gt-green-soft: #e6f5ec;
+  --gt-amber: #a86a00;
+  --gt-amber-soft: #fdf3e2;
+  --gt-red: #b4342b;
+  --gt-red-soft: #fbeceb;
+}
+
+@theme inline {
+  --color-background: var(--gt-bg);
+  --color-foreground: var(--gt-text);
+  --font-sans: var(--font-sans-gt);
+  --font-mono: var(--font-mono-gt);
+  --font-display: var(--font-display-gt);
+}
+
+body {
+  background: var(--gt-bg);
+  color: var(--gt-text);
+}
+
+/* --- surfaces ------------------------------------------------------------ */
+
+.gt-card {
+  background: var(--gt-surface);
+  border: 1px solid var(--gt-border);
+  border-radius: 10px;
+}
+
+.gt-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--gt-muted-soft);
+}
+
+.gt-title {
+  font-family: var(--font-display-gt), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.gt-mono {
+  font-family: var(--font-mono-gt), monospace;
+}
+
+/* --- activity feed (replaces the terminal-style console) ----------------- */
+
+.gt-feed {
+  background: var(--gt-surface-sunk);
+  border: 1px solid var(--gt-border);
+  border-radius: 8px;
+}
+
+.gt-feed-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  border-bottom: 1px solid color-mix(in srgb, var(--gt-border) 60%, transparent);
+}
+.gt-feed-row:last-child { border-bottom: 0; }
+
+.gt-feed-time {
+  font-family: var(--font-mono-gt), monospace;
+  font-size: 10.5px;
+  color: var(--gt-muted-soft);
+  padding-top: 2px;
+}
+
+.gt-feed-row.is-note   { color: var(--gt-muted); }
+.gt-feed-row.is-good   { color: var(--gt-green); }
+.gt-feed-row.is-warn   { color: var(--gt-amber); }
+.gt-feed-row.is-error  { color: var(--gt-red); }
+
+/* --- badges -------------------------------------------------------------- */
+
+.gt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.gt-badge-blue    { background: var(--gt-blue-soft);  color: var(--gt-blue); }
+.gt-badge-neutral { background: var(--gt-surface-sunk); color: var(--gt-muted); }
+.gt-badge-green   { background: var(--gt-green-soft); color: var(--gt-green); }
+.gt-badge-amber   { background: var(--gt-amber-soft); color: var(--gt-amber); }
+
+/* --- buttons ------------------------------------------------------------- */
+
+.gt-btn-primary {
+  background: var(--gt-blue);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background .15s;
+}
+.gt-btn-primary:hover:not(:disabled) { background: var(--gt-blue-hover); }
+.gt-btn-primary:disabled {
+  background: var(--gt-border-strong);
+  cursor: not-allowed;
+}
+
+/* --- animation ----------------------------------------------------------- */
+
+@keyframes gt-pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+.gt-pulse { animation: gt-pulse 1.1s ease-in-out infinite; }
+
+@keyframes gt-slide-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: none; }
+}
+.gt-slide-in { animation: gt-slide-in .3s ease-out; }
+
+/* spinner ring for the running step */
+.gt-spin {
+  width: 11px; height: 11px;
+  border: 1.5px solid var(--gt-blue-line);
+  border-top-color: var(--gt-blue);
+  border-radius: 50%;
+  animation: gt-rotate .7s linear infinite;
+}
+@keyframes gt-rotate { to { transform: rotate(360deg) } }
