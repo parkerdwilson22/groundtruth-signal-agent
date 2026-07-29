@@ -80,14 +80,18 @@ interface FeedLine {
 }
 
 /**
- * Step labels name which parts use AI judgment and which are deterministic —
- * the distinction spec §10.1 is built around, surfaced rather than hidden.
+ * Step labels name which parts use AI judgment vs. which don't — and the two
+ * non-AI steps are deliberately labeled differently from each other, not
+ * both "Deterministic": the weather step is plain software (a calculation,
+ * nothing triggered), the handoff is automation (a database change triggers
+ * Zapier). Collapsing those into one word erases the three-way distinction
+ * (agent / automation / plain code) the demo is built to explain.
  */
 const STEPS = [
   { label: 'Analyzing signal', mode: 'AI' as const },
-  { label: 'Best shoot window', mode: 'Deterministic' as const },
+  { label: 'Best shoot window', mode: 'Software' as const },
   { label: 'Drafting shot list + outreach', mode: 'AI' as const },
-  { label: 'Handoff to pipeline', mode: 'Deterministic' as const },
+  { label: 'Handoff to pipeline', mode: 'Automation' as const },
 ];
 
 const COLUMNS: { stage: PipelineStage; label: string }[] = [
@@ -720,8 +724,9 @@ export default function Dashboard() {
         <footer className="mt-8 border-t border-[var(--gt-border)] pt-4">
           <p className="gt-mono text-[10.5px] leading-relaxed text-[var(--gt-muted-soft)]">
             GroundTruth v1 · Smoove Visuals LLC · FAA Part 107 · Leads sourced from Mecklenburg
-            County public permit records. Signal detection and outreach drafting use AI judgment;
-            forecast lookup and the Gmail/Calendar handoff are deterministic.
+            County public permit records. Signal detection and outreach drafting use AI
+            judgment; the forecast lookup is plain software, not AI; the Gmail/Calendar
+            handoff is automation, triggered by a database change.
           </p>
         </footer>
       </main>
