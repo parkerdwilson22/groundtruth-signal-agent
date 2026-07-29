@@ -20,7 +20,14 @@ import type {
 type BoardRow = PipelineEntry & {
   leads: Pick<
     Lead,
-    'address' | 'city' | 'state' | 'price' | 'agent_email' | 'listing_agent' | 'contact_type'
+    | 'address'
+    | 'city'
+    | 'state'
+    | 'price'
+    | 'agent_email'
+    | 'listing_agent'
+    | 'contact_type'
+    | 'contact_source'
   > | null;
   drafts:
     | (Pick<Draft, 'outreach_subject' | 'best_shoot_window' | 'shoot_date_iso'> & {
@@ -102,7 +109,7 @@ export default function Dashboard() {
       .from('pipeline')
       .select(
         'id, lead_id, draft_id, stage, stage_locked, updated_at, ' +
-          'leads(address, city, state, price, agent_email, listing_agent, contact_type), ' +
+          'leads(address, city, state, price, agent_email, listing_agent, contact_type, contact_source), ' +
           'drafts(outreach_subject, best_shoot_window, shoot_date_iso, ' +
           'signals(signal_type, confidence, reasoning))',
       )
@@ -255,7 +262,14 @@ export default function Dashboard() {
   const surfaced = board.length;
   const inOutreach = board.filter((r) => r.stage === 'contacted').length;
   const booked = board.filter((r) => r.stage === 'scheduled' || r.stage === 'completed').length;
+  // Counts leads that have a contact at all; whether that contact carries a
+  // source URL is shown per-card, not flattened into this number. Claiming
+  // "verified" for an unsourced contact was the actual defect — under-
+  // counting to zero would be the opposite error.
   const withContact = board.filter((r) => r.leads?.agent_email).length;
+  const unverifiedContacts = board.filter(
+    (r) => r.leads?.agent_email && !r.leads?.contact_source,
+  ).length;
   const sweptCount = leads.filter((l) => l.source === 'mecklenburg_permits').length;
 
   return (
@@ -280,7 +294,11 @@ export default function Dashboard() {
         {/* ---------- outcome metrics (§10.5 — outcomes, never time saved) ---------- */}
         <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Signals surfaced" value={surfaced} />
-          <Stat label="With verified contact" value={withContact} />
+          <Stat
+            label="Contact found"
+            value={withContact}
+            note={unverifiedContacts > 0 ? `${unverifiedContacts} unverified` : undefined}
+          />
           <Stat label="In outreach" value={inOutreach} />
           <Stat label="Shoots booked" value={booked} accent />
         </section>
@@ -336,10 +354,26 @@ export default function Dashboard() {
                       {/* What the agent decided — so every lead in the queue
                           reconciles against the sweep summary above. */}
                       <OutcomeBadge outcome={leadOutcome[lead.id]} />
+                      {/* A contact with no source URL is NOT the same as a
+                          sourced one — the system says so rather than
+                          flattening both into "contact found". */}
                       {lead.agent_email ? (
-                        <span className="gt-badge gt-badge-green">
-                          {lead.contact_type === 'builder' ? 'builder' : 'agent'} contact
-                        </span>
+                        lead.contact_source ? (
+                          <span
+                            className="gt-badge gt-badge-green"
+                            title={`Source: ${lead.contact_source}`}
+                          >
+                            {lead.contact_type === 'builder' ? 'builder' : 'agent'} contact ·
+                            sourced
+                          </span>
+                        ) : (
+                          <span
+                            className="gt-badge gt-badge-amber"
+                            title="Found before source-tracking was added. Treat as unverified until re-checked."
+                          >
+                            contact · unverified
+                          </span>
+                        )
                       ) : lead.enrichment_status === 'insufficient_data' ? (
                         <span className="gt-badge gt-badge-neutral">no contact found</span>
                       ) : null}
@@ -651,15 +685,30 @@ function OutcomeBadge({ outcome }: { outcome?: string }) {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+function Stat({
+  label,
+  value,
+  accent,
+  note,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+  note?: string;
+}) {
   return (
     <div className="gt-card px-3.5 py-3">
-      <div
-        className={`gt-title text-[24px] leading-none ${
-          accent ? 'text-[var(--gt-blue)]' : 'text-[var(--gt-text)]'
-        }`}
-      >
-        {value}
+      <div className="flex items-baseline gap-2">
+        <span
+          className={`gt-title text-[24px] leading-none ${
+            accent ? 'text-[var(--gt-blue)]' : 'text-[var(--gt-text)]'
+          }`}
+        >
+          {value}
+        </span>
+        {note && (
+          <span className="gt-mono text-[10px] text-[var(--gt-amber)]">{note}</span>
+        )}
       </div>
       <div className="gt-section-label mt-1.5">{label}</div>
     </div>

@@ -162,13 +162,22 @@ export async function enrichAddress(args: {
   // no named source is treated as not found.
   if (result.status === 'enriched' && !result.contactSource) {
     return {
-      ...result,
-      status: 'insufficient_data',
-      contactEmail: null,
-      contactPhone: null,
+      ...blank,
       notes:
         `Contact discarded — model returned details with no source URL. ` +
         `Original note: ${result.notes}`,
+    };
+  }
+
+  // An enrichment that declared insufficient_data must not hand back facts
+  // through the side door. It once returned a $1.65M "price" for a property
+  // it admitted it could not find a listing for, and the caller stored it
+  // over the real permit cost. If the lookup found nothing, it returns
+  // nothing — §11.9 applies to every field, not just the contact.
+  if (result.status === 'insufficient_data') {
+    return {
+      ...blank,
+      notes: result.notes,
     };
   }
 
