@@ -116,7 +116,10 @@ const DRAFT_SCHEMA = {
     shotList: {
       type: 'array',
       items: { type: 'string' },
-      description: '4 to 6 aerial shots tailored to this specific property and signal type.',
+      description:
+        '4 to 6 aerial shots, in real flight order (wide establishing, then orbit/approach, ' +
+        'then a detail shot, then a golden-hour hero shot), each tied to the specific signal ' +
+        'and the actual light at the recommended time.',
     },
     outreachSubject: { type: 'string', description: 'Email subject line.' },
     outreachBody: {
@@ -170,6 +173,20 @@ export async function runDraft(
       '  3. outreachBody    — see formatting rules below\n' +
       '  4. bestShootWindow — a plain restatement of the recommended window\n\n' +
       `WHO YOU ARE WRITING TO:\n${audience}\n\n` +
+      'SHOT LIST — sequence it like a real flight plan, not a random list:\n' +
+      '  1. A wide establishing shot first (orients the viewer to the property and street).\n' +
+      '  2. Then an orbit, approach, or perimeter shot (shows the structure/lot from multiple ' +
+      'angles).\n' +
+      '  3. Then one detail shot addressing the SPECIFIC signal: for a stale or price-dropped ' +
+      'listing, a shot that replaces its weakest existing photo; for no listing media, the ' +
+      'shot that would matter most to a first-time viewer; for a builder audience, a shot that ' +
+      'shows off finish quality or curb appeal they would want for their own portfolio.\n' +
+      '  4. End with a golden-hour or dusk hero shot, and say WHY that specific time works ' +
+      '(reference the actual sunset time and wind from the shoot window below, not generic ' +
+      '"good lighting").\n' +
+      '  Do not invent lot size, acreage, waterfront, or interior features not present in the ' +
+      'property data below. A shot description should only reference what the record actually ' +
+      'supports.\n\n' +
       'BODY FORMATTING — this is a real email a real person will open:\n' +
       '- Start with a greeting line on its own (e.g. "Hi Sarah," or "Hi there,").\n' +
       '- Then 2 to 3 SHORT paragraphs, each separated by a blank line (\\n\\n).\n' +

@@ -28,6 +28,7 @@ type BoardRow = PipelineEntry & {
     | 'listing_agent'
     | 'contact_type'
     | 'contact_source'
+    | 'source_detail'
   > | null;
   drafts:
     | (Pick<Draft, 'outreach_subject' | 'best_shoot_window' | 'shoot_date_iso'> & {
@@ -135,7 +136,8 @@ export default function Dashboard() {
       .from('pipeline')
       .select(
         'id, lead_id, draft_id, stage, stage_locked, updated_at, ' +
-          'leads(address, city, state, price, agent_email, listing_agent, contact_type, contact_source), ' +
+          'leads(address, city, state, price, agent_email, listing_agent, contact_type, ' +
+          'contact_source, source_detail), ' +
           'drafts(outreach_subject, best_shoot_window, shoot_date_iso, ' +
           'signals(signal_type, confidence, reasoning))',
       )
@@ -386,30 +388,30 @@ export default function Dashboard() {
                         : 'border-[var(--gt-border)] bg-white hover:border-[var(--gt-border-strong)]'
                     }`}
                   >
+                    {/* Permit owner leads the card. That's the innovation being
+                        demonstrated — targeting the county's permit owner
+                        instead of a listing agent that usually doesn't exist
+                        yet — so it gets top position and the bold weight the
+                        address used to have. The address is still present,
+                        just secondary. */}
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-[13.5px] leading-snug font-medium">
-                        {lead.address}
+                      <span className="text-[14.5px] leading-snug font-semibold">
+                        {ownerOf(lead) ?? lead.address}
                       </span>
                       {fromSweep && (
                         <span className="gt-badge gt-badge-blue shrink-0">auto</span>
                       )}
                     </div>
+                    {ownerOf(lead) && (
+                      <div className="text-[12px] leading-snug text-[var(--gt-muted)]">
+                        {lead.address}
+                      </div>
+                    )}
                     <div className="gt-mono mt-1 text-[10.5px] text-[var(--gt-muted-soft)]">
                       {lead.city}
                       {lead.state ? `, ${lead.state}` : ''}
                       {lead.price ? ` · $${Number(lead.price).toLocaleString()}` : ''}
                     </div>
-
-                    {/* Owner of record from the permit — this is the reason the
-                        lead exists at all, and for a company it's the outreach
-                        target. Present on every county record, unlike a listing
-                        agent. */}
-                    {ownerOf(lead) && (
-                      <div className="gt-mono mt-1 truncate text-[10.5px] text-[var(--gt-muted)]">
-                        <span className="text-[var(--gt-muted-soft)]">permit owner: </span>
-                        {ownerOf(lead)}
-                      </div>
-                    )}
 
                     {/* The timing IS the signal — the window is roughly the
                         fortnight between a house being finished and having
@@ -631,8 +633,14 @@ export default function Dashboard() {
                         key={row.id}
                         className="gt-slide-in rounded-lg border border-[var(--gt-border)] border-l-[3px] border-l-[var(--gt-blue)] bg-white p-2.5"
                       >
-                        <div className="text-[12.5px] leading-snug font-medium">
-                          {row.leads?.address ?? 'Unknown lead'}
+                        <div className="text-[13px] leading-snug font-semibold">
+                          {(row.leads?.source_detail as { ownerOfRecord?: string } | null)
+                            ?.ownerOfRecord ??
+                            row.leads?.address ??
+                            'Unknown lead'}
+                        </div>
+                        <div className="text-[11px] leading-snug text-[var(--gt-muted)]">
+                          {row.leads?.address}
                         </div>
                         <div className="gt-mono mt-0.5 text-[10.5px] text-[var(--gt-muted-soft)]">
                           {row.leads?.city}
