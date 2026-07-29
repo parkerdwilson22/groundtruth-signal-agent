@@ -187,17 +187,38 @@ export async function runDraft(
       '  Do not invent lot size, acreage, waterfront, or interior features not present in the ' +
       'property data below. A shot description should only reference what the record actually ' +
       'supports.\n\n' +
-      'BODY FORMATTING — this is a real email a real person will open:\n' +
-      '- Start with a greeting line on its own (e.g. "Hi Sarah," or "Hi there,").\n' +
-      '- Then 2 to 3 SHORT paragraphs, each separated by a blank line (\\n\\n).\n' +
-      '- Then a brief closing line (e.g. "Happy to send samples if useful.").\n' +
+      'BODY STRUCTURE — lead with the pain point, not the pitch:\n' +
+      '  1. Greeting line on its own (e.g. "Hi Sarah," or "Hi there,").\n' +
+      '  2. PAIN POINT paragraph, 1-2 sentences: the actual cost of the signal you found. ' +
+      'For a builder: a finished home with no marketing media is capital sitting idle. ' +
+      'For a stale/price-dropped listing: a weak photo set is likely suppressing buyer ' +
+      'interest right when the price drop needed the opposite. Ground this in what this ' +
+      'PARTICULAR property record shows, not a generic statement.\n' +
+      '  3. SOLUTION paragraph, 2-3 sentences: the concrete shoot window (real date, ' +
+      'conditions, wind), and if it fits naturally, ONE of the facts listed below, cited ' +
+      'plainly and only once. Do not force it in if it does not fit the sentence.\n' +
+      '  4. A brief closing line inviting a reply (e.g. "Happy to send samples if useful.").\n' +
+      '  Separate each paragraph with a blank line (\\n\\n).\n\n' +
+      'FACTS YOU MAY CITE — verbatim or lightly paraphrased, never invent your own number:\n' +
+      '  - "Industry studies on real estate photography commonly cite aerial and drone ' +
+      'coverage helping listings sell up to 68% faster than standard photos alone."\n' +
+      '  Use at most once per email, only where the property record makes it genuinely ' +
+      'relevant (new construction with no media, or a listing already underperforming). ' +
+      'Do not cite it for every property, and never state a different percentage or invent ' +
+      'a second statistic.\n\n' +
+      'WRITING QUALITY — this is a cold email a stranger will judge in five seconds:\n' +
+      '- One idea per sentence. If a sentence has more than two commas, split it.\n' +
+      '- No stray spaces before punctuation, no double spaces, no trailing space before a ' +
+      'comma when combining fields like address or size. Reread each sentence before ' +
+      'finishing.\n' +
       '- Do NOT write a signature, name, phone number, website, or sign-off like "Best, ' +
       'Parker" — a verified signature is appended automatically. Anything you write there ' +
       'would be invented.\n' +
       '- No markdown, no bullet characters, no subject line inside the body.\n' +
       '- NEVER use em dashes or en dashes (— or –) anywhere in the subject, body, ' +
       'shot list, or shoot window text. They read as machine-written. Use a comma, ' +
-      'a full stop, or restructure the sentence instead.\n\n' +
+      'a full stop, or restructure the sentence instead.\n' +
+      '- Do not use exclamation points. One matter-of-fact tone throughout.\n\n' +
       'TONE: a working professional, not marketing copy. Specific and brief. Cite the ' +
       'concrete signal and the shoot window — never generic copy that could apply to any ' +
       'property.\n\n' +
