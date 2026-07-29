@@ -435,7 +435,10 @@ export default function Dashboard() {
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       {/* What the agent decided — so every lead in the queue
                           reconciles against the sweep summary above. */}
-                      <OutcomeBadge outcome={leadOutcome[lead.id]} />
+                      <OutcomeBadge
+                        outcome={leadOutcome[lead.id]}
+                        hasContact={!!lead.agent_email}
+                      />
                       {/* A contact with no source URL is NOT the same as a
                           sourced one — the system says so rather than
                           flattening both into "contact found". */}
@@ -609,16 +612,26 @@ export default function Dashboard() {
 
         {/* ---------- pipeline ---------- */}
         <section className="mt-6">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-1 flex items-center justify-between">
             <h2 className="gt-section-label">Pipeline</h2>
             <span className="gt-mono text-[10.5px] text-[var(--gt-muted-soft)]">
               moving a card locks it from the agent
             </span>
           </div>
+          <p className="mb-3 text-[11.5px] leading-snug text-[var(--gt-muted-soft)]">
+            The agent validated all of these as worth pursuing. Not all have a contact yet,
+            since it will not chase down a private individual&apos;s personal details, only a
+            verified business one.
+          </p>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {COLUMNS.map((col) => {
-              const rows = board.filter((r) => r.stage === col.stage);
+              // A card with a real, verified contact is the actionable one right
+              // now, so it leads the column rather than sitting wherever it
+              // happened to land chronologically.
+              const rows = board
+                .filter((r) => r.stage === col.stage)
+                .sort((a, b) => Number(!!b.leads?.agent_email) - Number(!!a.leads?.agent_email));
               return (
                 <div
                   key={col.stage}
@@ -666,8 +679,15 @@ export default function Dashboard() {
                           </div>
                         )}
 
+                        <div className="mt-1.5">
+                          {row.leads?.agent_email ? (
+                            <span className="gt-badge gt-badge-green">ready to send</span>
+                          ) : (
+                            <span className="gt-badge gt-badge-amber">needs a contact</span>
+                          )}
+                        </div>
                         {row.leads?.agent_email && (
-                          <div className="gt-mono mt-1.5 truncate text-[10.5px] text-[var(--gt-green)]">
+                          <div className="gt-mono mt-1 truncate text-[10.5px] text-[var(--gt-green)]">
                             {row.leads.agent_email}
                           </div>
                         )}
@@ -739,15 +759,32 @@ export default function Dashboard() {
  * genuinely never processed — which is itself information, and distinct from
  * one that was reviewed and turned down (spec §11.3).
  */
-function OutcomeBadge({ outcome }: { outcome?: string }) {
+/**
+ * "Drafted" alone conflated two very different situations: a lead with a
+ * real recipient (send it) and one with no known contact (the copy is ready,
+ * but there is no one to send it to yet). Those need different words, or the
+ * card reads as a mistake rather than an honest, expected outcome — most new
+ * construction has no findable contact yet, and the agent correctly refuses
+ * to chase down a private individual's personal details.
+ */
+function OutcomeBadge({ outcome, hasContact }: { outcome?: string; hasContact?: boolean }) {
   if (!outcome) return <span className="gt-badge gt-badge-neutral">not yet run</span>;
 
   const map: Record<string, { label: string; cls: string; title: string }> = {
-    signal_found: {
-      label: 'drafted',
-      cls: 'gt-badge-green',
-      title: 'Signal found. Outreach drafted and sent to the pipeline.',
-    },
+    signal_found: hasContact
+      ? {
+          label: 'ready to send',
+          cls: 'gt-badge-green',
+          title: 'Signal found, contact verified. A Gmail draft is waiting for review.',
+        }
+      : {
+          label: 'validated, no contact yet',
+          cls: 'gt-badge-amber',
+          title:
+            'The agent judged this worth pitching and wrote the outreach, but found no ' +
+            'verifiable contact. Often means the owner is a private individual, and the ' +
+            'agent deliberately will not chase down personal contact details.',
+        },
     capped: {
       label: 'held back by cap',
       cls: 'gt-badge-amber',
