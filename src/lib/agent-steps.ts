@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '@/lib/anthropic';
+import { to12Hour } from '@/lib/time';
 import type { Lead, Signal, SignalType, SignalResult, ShootWindow, DraftResult } from '@/lib/types';
 
 /**
@@ -218,7 +219,9 @@ export async function runDraft(
       '- NEVER use em dashes or en dashes (— or –) anywhere in the subject, body, ' +
       'shot list, or shoot window text. They read as machine-written. Use a comma, ' +
       'a full stop, or restructure the sentence instead.\n' +
-      '- Do not use exclamation points. One matter-of-fact tone throughout.\n\n' +
+      '- Do not use exclamation points. One matter-of-fact tone throughout.\n' +
+      '- Always write times in 12-hour format with AM/PM (e.g. "6:42 PM"). Never write ' +
+      '24-hour time (e.g. "18:42") anywhere in the subject or body.\n\n' +
       'TONE: a working professional, not marketing copy. Specific and brief. Cite the ' +
       'concrete signal and the shoot window — never generic copy that could apply to any ' +
       'property.\n\n' +
@@ -253,7 +256,21 @@ export async function runDraft(
             null,
             2,
           )}\n\n` +
-          `Best shoot window:\n${JSON.stringify(shootWindow, null, 2)}`,
+          // Converted to 12-hour time before the model ever sees it, so it
+          // cannot echo "18:42" into an email a real person reads — a
+          // formatting choice with one right answer belongs in code, not in
+          // a request to the model.
+          `Best shoot window:\n${JSON.stringify(
+            {
+              ...shootWindow,
+              sunrise: to12Hour(shootWindow.sunrise),
+              sunset: to12Hour(shootWindow.sunset),
+              startLocal: to12Hour(shootWindow.startLocal),
+              endLocal: to12Hour(shootWindow.endLocal),
+            },
+            null,
+            2,
+          )}`,
       },
     ],
   });

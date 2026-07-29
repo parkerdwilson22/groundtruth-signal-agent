@@ -26,3 +26,19 @@ export function toEasternIso(dateIso: string, hhmm: string): string {
   const mm = String(minutes).padStart(2, '0');
   return `${dateIso}T${hhmm}:00${sign}${hh}:${mm}`;
 }
+
+/**
+ * "18:42" -> "6:42 PM". The weather step works internally in 24-hour time,
+ * but a drafted email is read by a real person — a cold email that says
+ * "between 18:42 and 20:12" reads as machine output. Converted here,
+ * deterministically, rather than asked of the model: the model was handed
+ * the raw 24-hour values and echoed them verbatim, since nothing told it to
+ * do otherwise. Formatting is a plain transformation with one right answer,
+ * not a judgment call.
+ */
+export function to12Hour(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+}
