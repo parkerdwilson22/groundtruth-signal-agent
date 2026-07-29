@@ -129,8 +129,11 @@ const STEPS = [
   { label: 'Handoff to pipeline', mode: 'Automation' as const },
 ];
 
+// Labels are display-only. The underlying stage value stays 'new_signal' —
+// the Postgres trigger fires the Zapier webhook on that exact string, so
+// renaming the value (not just the label) would break the handoff.
 const COLUMNS: { stage: PipelineStage; label: string }[] = [
-  { stage: 'new_signal', label: 'New signal' },
+  { stage: 'new_signal', label: 'Ready for outreach' },
   { stage: 'contacted', label: 'Contacted' },
   { stage: 'scheduled', label: 'Scheduled' },
   { stage: 'completed', label: 'Completed' },
@@ -660,19 +663,31 @@ export default function Dashboard() {
             </span>
           </div>
           <p className="mb-3 text-[11.5px] leading-snug text-[var(--gt-muted-soft)]">
-            A subset of the Lead queue above: only the ones the agent judged worth pursuing
-            and actually drafted, not everything that was swept. Not all have a contact yet,
-            since it will not chase down a private individual&apos;s personal details, only a
-            verified business one.
+            Only leads with an actual path to outreach: a found contact, or a business
+            reachable with a quick manual lookup. Individually-owned leads with no contact
+            stay in the Lead queue above, not here — there is no one to reach yet.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {COLUMNS.map((col) => {
-              // A card with a real, verified contact is the actionable one right
-              // now, so it leads the column rather than sitting wherever it
-              // happened to land chronologically.
+              // The board only shows leads with an actual path to outreach: a
+              // found contact, or a business someone could look up in a few
+              // minutes. An individually-owned lead with no contact has no
+              // such path right now (the agent won't search for one, by
+              // design) and stays in the Lead queue only, not here — a
+              // resting "new signal" card with nobody to reach reads as
+              // clutter, not progress. Once a human moves a card (locked),
+              // it always shows: that's evidence of a real decision, not the
+              // agent's default.
               const rows = board
                 .filter((r) => r.stage === col.stage)
+                .filter((r) => {
+                  if (r.stage !== 'new_signal' || r.stage_locked) return true;
+                  const owner = (
+                    r.leads?.source_detail as { ownerOfRecord?: string } | null
+                  )?.ownerOfRecord?.trim();
+                  return !!r.leads?.agent_email || (!!owner && looksLikeCompany(owner));
+                })
                 .sort((a, b) => Number(!!b.leads?.agent_email) - Number(!!a.leads?.agent_email));
               return (
                 <div
