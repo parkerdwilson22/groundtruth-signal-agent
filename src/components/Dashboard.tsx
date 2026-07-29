@@ -36,6 +36,15 @@ type BoardRow = PipelineEntry & {
     | null;
 };
 
+/**
+ * Owner of record from the county permit, stashed in source_detail by the
+ * sweep. Every permit has one; a listing agent usually does not exist yet.
+ */
+function ownerOf(lead: Lead): string | null {
+  const d = lead.source_detail as { ownerOfRecord?: string | null } | null;
+  return d?.ownerOfRecord?.trim() || null;
+}
+
 /** "2026-07-30" -> "Thu, Jul 30". Avoids parsing the human-readable prose. */
 function shortDate(iso: string | null | undefined): string | null {
   if (!iso) return null;
@@ -275,15 +284,33 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen">
       {/* ---------- header ---------- */}
+      {/* A cold viewer must know what this is before anyone explains it, so
+          the header states the job and the lead source rather than assuming
+          the dashboard speaks for itself. */}
       <header className="border-b border-[var(--gt-border)] bg-[var(--gt-surface)]">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-4 px-6 py-3.5">
-          <BrandMark />
-          <div className="flex items-center gap-2">
-            <span className="gt-badge gt-badge-neutral">
-              {sweptCount} of {leads.length} leads auto-sourced
-            </span>
-            <span className="gt-badge gt-badge-blue">Sweep runs daily 7:00 AM</span>
+        <div className="mx-auto max-w-[1180px] px-6 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <BrandMark />
+            <div className="flex items-center gap-2">
+              <span className="gt-badge gt-badge-neutral">
+                {sweptCount} of {leads.length} leads auto-sourced
+              </span>
+              <span className="gt-badge gt-badge-blue">Runs daily · 7:00 AM</span>
+            </div>
           </div>
+
+          <p className="mt-2.5 max-w-[760px] text-[13px] leading-relaxed text-[var(--gt-muted)]">
+            <span className="font-medium text-[var(--gt-text)]">
+              Finds newly-built homes that don’t have listing photos yet — and drafts the
+              pitch.
+            </span>{' '}
+            Leads are pulled from{' '}
+            <span className="font-medium text-[var(--gt-blue)]">
+              Mecklenburg County building permit records
+            </span>
+            , not a purchased list. A permit closing is the moment a house exists and still
+            has nothing to show.
+          </p>
         </div>
       </header>
 
@@ -306,11 +333,17 @@ export default function Dashboard() {
         <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           {/* ---------- lead queue ---------- */}
           <section className="gt-card flex flex-col p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="gt-section-label">Lead queue</h2>
-              <span className="gt-mono text-[10.5px] text-[var(--gt-muted-soft)]">
-                {leads.length} total
-              </span>
+            <div className="mb-3">
+              <div className="flex items-center justify-between">
+                <h2 className="gt-section-label">Lead queue</h2>
+                <span className="gt-mono text-[10.5px] text-[var(--gt-muted-soft)]">
+                  {leads.length} total
+                </span>
+              </div>
+              <p className="mt-1 text-[11.5px] leading-snug text-[var(--gt-muted-soft)]">
+                Single-family permits completed in the last 14 days. Each badge shows what
+                the agent decided.
+              </p>
             </div>
 
             <div className="max-h-[420px] flex-1 space-y-2 overflow-y-auto pr-1">
@@ -349,6 +382,17 @@ export default function Dashboard() {
                       {lead.state ? `, ${lead.state}` : ''}
                       {lead.price ? ` · $${Number(lead.price).toLocaleString()}` : ''}
                     </div>
+
+                    {/* Owner of record from the permit — this is the reason the
+                        lead exists at all, and for a company it's the outreach
+                        target. Present on every county record, unlike a listing
+                        agent. */}
+                    {ownerOf(lead) && (
+                      <div className="gt-mono mt-1 truncate text-[10.5px] text-[var(--gt-muted)]">
+                        <span className="text-[var(--gt-muted-soft)]">permit owner: </span>
+                        {ownerOf(lead)}
+                      </div>
+                    )}
 
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       {/* What the agent decided — so every lead in the queue

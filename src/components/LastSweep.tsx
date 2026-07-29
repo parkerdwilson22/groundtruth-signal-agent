@@ -40,14 +40,17 @@ function relativeTime(iso: string): string {
 export default function LastSweep() {
   const [batch, setBatch] = useState<Batch | null>(null);
   const [totalRuns, setTotalRuns] = useState(0);
+  const [cap, setCap] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [{ data: batchData }, { count }] = await Promise.all([
+    const [{ data: batchData }, { count }, { data: capData }] = await Promise.all([
       supabase.rpc('latest_sweep_batch'),
       supabase.from('agent_runs').select('id', { count: 'exact', head: true }),
+      supabase.rpc('get_daily_lead_cap'),
     ]);
     setTotalRuns(count ?? 0);
+    setCap(typeof capData === 'number' ? capData : null);
     const rows = (batchData ?? []) as Batch[];
     if (rows.length) setBatch(rows[0]);
     setLoading(false);
@@ -93,17 +96,20 @@ export default function LastSweep() {
 
       <div className="grid grid-cols-2 divide-x divide-[var(--gt-border)] sm:grid-cols-4">
         <Cell value={batch.drafted} label="Drafted for review" tone="good" />
-        <Cell value={batch.capped} label="Held back by cap" />
+        <Cell
+          value={batch.capped}
+          label={cap ? `Held back — cap is ${cap}/day` : 'Held back by cap'}
+        />
         <Cell value={batch.no_signal} label="Declined — no signal" />
         <Cell value={batch.errors} label="Errors" tone={batch.errors > 0 ? 'bad' : undefined} />
       </div>
 
       <p className="border-t border-[var(--gt-border)] px-4 py-2 text-[11.5px] text-[var(--gt-muted)]">
-        {batch.errors === 0
-          ? 'Completed with no errors. '
-          : `${batch.errors} step${batch.errors === 1 ? '' : 's'} errored. `}
-        Ran unattended against Mecklenburg County permit records. Every outcome is logged
-        separately, so “found nothing” is never mistaken for “broke”.
+        Ran unattended — nobody started this.{' '}
+        {batch.errors === 0 ? 'No errors. ' : `${batch.errors} step(s) errored. `}
+        It ranks what it finds by confidence and only drafts the top {cap ?? 3} a day, so the
+        rest are deliberately held rather than sent. Every outcome is logged separately, so
+        “found nothing” is never mistaken for “broke”.
       </p>
     </section>
   );
