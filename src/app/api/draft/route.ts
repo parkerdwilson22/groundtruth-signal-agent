@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            'shootWindow is missing a valid dateIso/startLocal/endLocal — did the ' +
+            'shootWindow is missing a valid dateIso/startLocal/endLocal. Did the ' +
             'shoot-window step fail or return insufficientData? Do not proceed to drafting ' +
             'without a validated window.',
         },

@@ -98,14 +98,14 @@ export default function LastSweep() {
         <Cell value={batch.drafted} label="Drafted for review" tone="good" />
         <Cell
           value={batch.capped}
-          label={cap ? `Held back — cap is ${cap}/day` : 'Held back by cap'}
+          label={cap ? `Held back, cap is ${cap}/day` : 'Held back by cap'}
         />
-        <Cell value={batch.no_signal} label="Declined — no signal" />
+        <Cell value={batch.no_signal} label="Declined, no signal" />
         <Cell value={batch.errors} label="Errors" tone={batch.errors > 0 ? 'bad' : undefined} />
       </div>
 
       <p className="border-t border-[var(--gt-border)] px-4 py-2 text-[11.5px] text-[var(--gt-muted)]">
-        Ran unattended — nobody started this.{' '}
+        Ran unattended. Nobody started this.{' '}
         {batch.errors === 0 ? 'No errors. ' : `${batch.errors} step(s) errored. `}
         It ranks what it finds by confidence and only drafts the top {cap ?? 3} a day, so the
         rest are deliberately held rather than sent. Every outcome is logged separately, so

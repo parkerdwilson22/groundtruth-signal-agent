@@ -15,7 +15,7 @@ const display = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: 'GroundTruth — Signal Agent',
+  title: 'GroundTruth Signal Agent',
   description: 'Real estate drone-shoot prospecting agent for GroundTruth.',
 };
 

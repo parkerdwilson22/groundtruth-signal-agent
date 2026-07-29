@@ -177,7 +177,10 @@ export async function runDraft(
       '- Do NOT write a signature, name, phone number, website, or sign-off like "Best, ' +
       'Parker" — a verified signature is appended automatically. Anything you write there ' +
       'would be invented.\n' +
-      '- No markdown, no bullet characters, no subject line inside the body.\n\n' +
+      '- No markdown, no bullet characters, no subject line inside the body.\n' +
+      '- NEVER use em dashes or en dashes (— or –) anywhere in the subject, body, ' +
+      'shot list, or shoot window text. They read as machine-written. Use a comma, ' +
+      'a full stop, or restructure the sentence instead.\n\n' +
       'TONE: a working professional, not marketing copy. Specific and brief. Cite the ' +
       'concrete signal and the shoot window — never generic copy that could apply to any ' +
       'property.\n\n' +

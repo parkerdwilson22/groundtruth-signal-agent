@@ -1,144 +1,157 @@
-# GroundTruth — Loom script (~3:00)
+# GroundTruth — Loom script
 
-Read-card. Every number here is real and checkable on screen.
-Screen: **groundtruth-signal-agent.vercel.app**
-
----
-
-## 0:00 – 0:30 · The problem
-
-> In early-stage companies the hard part of outreach isn't sending more — it's
-> knowing who's actually worth a conversation. Most prospecting tools score
-> leads on fit: price, size, location. That tells you a property exists. It
-> doesn't tell you it needs you *right now*.
->
-> I run a Part 107 drone photography business in Charlotte. My best customer is
-> a house that was finished last week and has no photos yet. That window is
-> maybe two weeks wide, and there's no list of those anywhere.
->
-> So I built an agent that finds them.
+**~450 spoken words ≈ 3:00.** Screen: `groundtruth-signal-agent.vercel.app`
+Every number is real and visible on screen.
 
 ---
 
-## 0:30 – 1:10 · What ran while I wasn't watching
+## 0:00 – 0:25 · The window (60 words)
 
-**On screen:** top of the dashboard — the blue "Last automated sweep" bar.
+*Screen: the dashboard, top of page.*
 
-> This ran on its own at 12:49 this afternoon. Two minutes, no errors.
+> When a builder finishes a house, there's about a two-week window where the
+> home exists and has zero marketing photos. That's my best customer — and
+> there's no list of them anywhere.
 >
-> It pulled Mecklenburg County's building permit feed — public records, no
-> scraping — and found nine single-family homes whose construction permits just
-> closed. That's the closest public signal to "this house is finished and about
-> to need marketing photos."
->
-> Of those nine, it drafted outreach on three and deliberately held back six.
-> That restraint is a setting: three a day, ranked by confidence. I'd rather
-> have three good ones than nine mediocre ones.
-
-**On screen:** the lead queue — point at the badges.
-
-> And every lead says what happened to it. Drafted. Held back by cap. No
-> contact found. Nine leads, nine outcomes, nothing unexplained.
-
-**On screen:** scroll to the pipeline. Point at a card.
-
-> Every card says why it's here, not just where it is. New construction, no
-> listing media, sixty percent confidence. Shoot date. Timestamp.
-
-**On screen:** the 5010 Ohm Ln card, then open Gmail → Drafts.
-
-> And here's the part that matters. This lead has a real listing agent —
-> found, with a source. That draft is sitting in my Gmail right now, written,
-> addressed, waiting for me to hit send. Plus a tentative calendar hold on the
-> shoot date.
+> Most prospecting tools score leads on fit. Price, size, location. I needed
+> one that scores on **timing**.
 
 ---
 
-## 1:10 – 2:05 · Watch it think
+## 0:25 – 1:05 · What ran without me (115 words)
 
-**On screen:** click a fresh lead → **Run agent**.
+*Screen: the blue "Last automated sweep" bar.*
 
-> Let me run one live so you can see the reasoning.
+> This ran by itself at 12:49 yesterday. Two minutes, no errors. Nobody
+> started it.
 >
-> Step one is signal detection — that's AI, because "is this worth pitching"
-> is a judgment call. It's reading the property against a set of signals and
-> telling me its confidence *and* what it couldn't verify.
+> It pulled Mecklenburg County's building permit records — public data, not a
+> purchased list — and found nine homes whose permits just closed.
 
-**On screen:** the activity feed as it streams.
+*Screen: scroll the lead queue. Point at the three "2 days ago" cards.*
 
-> Step two, the shoot window — that's not AI. It's a plain weather API call.
-> This step used to be an AI web search, and I took the AI out on purpose:
-> picking the clearest low-wind day isn't judgment, it's a data fetch. It went
-> from forty-five seconds to about one, from thirty cents to free, and it
-> stopped occasionally getting the date wrong.
+> These three closed **two days ago**. Two of them are the same builder —
+> Epic Homes — two houses on the same street, both finished this week.
 >
-> Step three is drafting — AI again, because writing something specific to
-> *this* property is judgment.
+> And notice what it's showing me: the **permit owner**. Not the listing
+> agent. For a house this new there usually isn't an agent yet — but the
+> county always tells you who pulled the permit. That's the builder, and a
+> builder finishing two houses a week is a relationship, not a one-off.
+
+*Screen: point at the two Ohm Ln cards — one drafted, one declined.*
+
+> These two are the interesting pair. This one it drafted — it found an
+> active listing, so it went to the listing agent. The one next door it
+> **declined**, because that listing already had twenty-two photos.
 >
-> And step four hands off to Zapier: Gmail draft, tentative calendar hold.
+> Same builder, same street, same week. Two different answers.
+>
+> It drafted three overall and held back six. Cap's three a day.
 
 ---
 
-## 2:05 – 2:35 · Where the human stays
+## 1:05 – 2:00 · Watch it work (135 words)
+
+*Screen: pick a capped lead → **Run agent**.*
+
+> Let me run one live.
+>
+> Step one, signal detection — that's **AI**, because "is this worth pitching"
+> is a judgment call. It gives me a confidence score and tells me what it
+> couldn't verify.
+
+*Screen: the activity feed streaming.*
+
+> Step two, the shoot window — that's **not** AI. It's a plain weather API.
+> This used to be an AI web search and I took the AI out on purpose: picking
+> the clearest low-wind day is a data fetch, not a judgment call. It went from
+> forty-five seconds to one, and from thirty cents to free.
+>
+> Step three, drafting — AI again. Writing something specific to *this*
+> property is judgment.
+>
+> Step four hands off to Zapier.
+
+*Screen: cut to Gmail Drafts, then Google Calendar.*
+
+> And there's the result. A Gmail draft — written, addressed, waiting. Plus a
+> tentative calendar hold on the shoot date, shot list in the description.
+
+---
+
+## 2:00 – 2:35 · Where the human stays (90 words)
 
 > Three things I want to be clear about.
 >
-> **First** — it stops at a draft. Never a send. Never a confirmed booking. The
-> one irreversible action in this whole system is still mine.
->
-> **Second** — once I move a card, the agent can never move it back.
+> **It stops at a draft.** Never sends. The one irreversible action is still
+> mine.
 
-**On screen:** change a pipeline card's dropdown to **Contacted**. The `locked`
-badge appears.
+*Screen: change a card's dropdown to Contacted — the `locked` badge appears.*
 
-> Watch. I move this to Contacted, and it locks. That's enforced by the
-> database, not by a prompt — the agent is physically unable to reverse it or
-> re-send outreach on it. I tested it by trying to break it.
->
-> **Third** — and this is my favorite one.
+> **Once I move a card, it locks.** The agent physically cannot reverse it.
+> That's enforced in the database, not in a prompt.
 
-**On screen:** select **5014 OHM LN** in the queue and run it — it declines live.
-(Or point at its badge if you'd rather not spend a run.)
+*Screen: the 5014 Ohm Ln card — "declined".*
 
-> This is a one-point-nine-million-dollar property the agent said *no* to. It
-> found the listing, saw twenty-two photos already existed, and declined —
-> in writing, with what it couldn't confirm listed underneath.
->
-> Eight of my nine leads had no contact it could verify, and it told me that
-> instead of inventing an email address. A clean no is worth more than a
-> confident maybe.
+> And **this one it said no to.** A one-point-nine-million-dollar property. It
+> found the listing, saw twenty-two photos already existed, and declined — in
+> writing. Eight of my nine leads had no contact it could verify, and it told
+> me that instead of inventing an email address.
 
 ---
 
-## 2:35 – 3:00 · Close
+## 2:35 – 3:00 · Close (65 words)
 
-> Nine properties I had no visibility into, surfaced before I went looking.
-> One with a verified contact and a drafted pitch. At six hundred dollars a
-> shoot and roughly nineteen qualifying builds a month in this county, it pays
-> for itself the first time it works.
+> Nine properties I had no visibility into, surfaced before I went looking. At
+> six hundred dollars a shoot and roughly nineteen qualifying builds a month
+> in this county, it pays for itself the first time it works.
 >
-> AI is doing three things here: reading the signal, finding the contact,
-> writing the pitch. Everything else — the county pull, the forecast, the
-> handoff — is deterministic, on purpose. This is a v1 built to be cut back,
-> not a finished system.
+> AI does three things here: reads the signal, finds the contact, writes the
+> pitch. Everything else is deterministic on purpose.
 >
-> It's the tool I actually use. It's live, it runs every morning at seven, and
-> I built it because I'm the one flying the drone.
+> It's live, it runs every morning at seven — and I built it because I'm the
+> one flying the drone.
 
 ---
 
-## Notes before recording
+# Key points, mapped to what they're scoring
 
-- **Board state:** 9 leads, all county-sourced. 3 drafted, 6 held back by the
-  daily cap. The four prototype properties from the original spec were deleted
-  — they were fabricated addresses, and mixing them with real permit data would
-  have undercut the whole claim.
-- **For the live run**, pick a capped lead — 501 Magnolia, 1146 Concord, or
-  13128 Asbury Chapel. They have a real signal but were never drafted, so the
-  full chain runs cleanly.
-- Each live run costs ~5¢; you have ~$0.41, so 6–8 takes.
-- Have **Gmail Drafts** and **Google Calendar** open in tabs to cut to.
-- Don't claim a conversion rate. "Pays for itself the first time it works" is
-  true and checkable; a percentage would be invented — and inventing a number
+| Criterion | The moment that earns it |
+|---|---|
+| **AI Integration Depth** | The AI/Deterministic labels on every step — *especially* saying you removed AI from the weather step on purpose. Almost nobody demos taking AI out. |
+| **Real-World Impact** | The Gmail draft and calendar hold, real and on screen. Plus the $600 × ~19 builds/month framing. |
+| **Innovation & Creativity** | Permit records as a lead source, and targeting the permit owner instead of an agent who doesn't exist yet. This is your strongest 20 seconds. |
+
+## Three lines that do the most work
+
+1. *"Not the listing agent — there isn't one yet. The permit owner."*
+2. *"I took the AI out on purpose."*
+3. *"It said no to a one-point-nine-million-dollar property."*
+
+## Do not say
+
+- **Any conversion rate.** You don't have one. "Pays for itself the first time
+  it works" is true and checkable; a percentage would be invented — which
   would contradict the exact discipline you're demonstrating.
-- Never mention the private CEO email (spec §11.11) — background only.
+- **"Multi-agent system."** It's a disciplined chain of three AI calls with
+  deterministic steps between them. Say that; it's more accurate and more
+  impressive to anyone who builds these.
+- Anything from spec §11.11 (the private CEO email). Background only.
+
+## If you have 15 seconds spare
+
+> This is a v1, built to be cut back. The next thing I'd harden is the contact
+> lookup — and the next lead source is stale listings, which the signal types
+> already support.
+
+That answers "what's next" and quietly acknowledges the roadmap without being
+asked.
+
+## Before you hit record
+
+- Board state: 9 leads, all county-sourced. 3 drafted, 6 held back.
+- **For the live run** pick a *capped* lead — 501 Magnolia, 1146 Concord, or
+  13128 Asbury Chapel. Real signal, never drafted, so the chain runs clean.
+- Each run ≈ 5¢; you have ~$0.41, so 6–8 takes.
+- Have **Gmail Drafts** and **Google Calendar** open in tabs to cut to.
+- Unlock any card you locked in a previous take, or the agent will refuse it.

@@ -212,7 +212,7 @@ export default function Dashboard() {
 
       if (!signal.signal) {
         // A clean negative is a first-class result, not a failure (§11.2).
-        say(`No signal — ${signal.reasoning}`, 'warn');
+        say(`No signal. ${signal.reasoning}`, 'warn');
         if (signal.dataGaps?.length) {
           say(`Gaps the agent flagged: ${signal.dataGaps.join('; ')}`, 'note');
         }
@@ -237,8 +237,8 @@ export default function Dashboard() {
       setActiveStep(1);
       say('Fetching forecast (Open-Meteo, no model call)', 'note');
       const win = await post<ShootWindow>('/api/shoot-window', { leadId: selected.id });
-      say(`Best day: ${win.date} — ${win.conditions}, wind ${win.windKmh} km/h`, 'good');
-      say(`Flight window ${win.startLocal}–${win.endLocal}. ${win.timeRationale}`, 'note');
+      say(`Best day: ${win.date}. ${win.conditions}, wind ${win.windKmh} km/h`, 'good');
+      say(`Flight window ${win.startLocal} to ${win.endLocal}. ${win.timeRationale}`, 'note');
       setDoneCount(2);
 
       // 3 — draft (AI judgment)
@@ -254,7 +254,7 @@ export default function Dashboard() {
 
       // 4 — handoff (deterministic)
       setActiveStep(3);
-      say('Added to pipeline — webhook fired to Zapier', 'good');
+      say('Added to pipeline. Webhook fired to Zapier.', 'good');
       await Promise.all([loadBoard(), loadLeads()]);
       setDoneCount(4);
       setActiveStep(-1);
@@ -281,7 +281,7 @@ export default function Dashboard() {
       say(`Could not move card: ${error.message}`, 'error');
       return;
     }
-    say(`You moved ${row.leads?.address ?? 'lead'} to ${stage.replace('_', ' ')} — now locked.`, 'note');
+    say(`You moved ${row.leads?.address ?? 'lead'} to ${stage.replace('_', ' ')}. Now locked.`, 'note');
     await loadBoard();
   }
 
@@ -318,7 +318,7 @@ export default function Dashboard() {
 
           <p className="mt-2.5 max-w-[760px] text-[13px] leading-relaxed text-[var(--gt-muted)]">
             <span className="font-medium text-[var(--gt-text)]">
-              Finds newly-built homes that don’t have listing photos yet — and drafts the
+              Finds newly-built homes that don’t have listing photos yet, and drafts the
               pitch.
             </span>{' '}
             Leads are pulled from{' '}
@@ -553,7 +553,7 @@ export default function Dashboard() {
                 <ul className="space-y-0.5">
                   {declined.dataGaps.map((gap, i) => (
                     <li key={i} className="text-[12.5px] text-[var(--gt-muted)]">
-                      — {gap}
+                      {gap}
                     </li>
                   ))}
                 </ul>
@@ -733,7 +733,7 @@ function OutcomeBadge({ outcome }: { outcome?: string }) {
     signal_found: {
       label: 'drafted',
       cls: 'gt-badge-green',
-      title: 'Signal found — outreach drafted and sent to the pipeline.',
+      title: 'Signal found. Outreach drafted and sent to the pipeline.',
     },
     capped: {
       label: 'held back by cap',
@@ -748,7 +748,7 @@ function OutcomeBadge({ outcome }: { outcome?: string }) {
     error: {
       label: 'errored',
       cls: 'gt-badge-amber',
-      title: 'A step failed on this lead — see agent_runs.',
+      title: 'A step failed on this lead. See agent_runs.',
     },
   };
 
