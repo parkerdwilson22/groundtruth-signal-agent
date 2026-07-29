@@ -45,6 +45,23 @@ function ownerOf(lead: Lead): string | null {
   return d?.ownerOfRecord?.trim() || null;
 }
 
+/**
+ * How long ago the building permit closed. This is the actual signal — the
+ * opportunity window is roughly the fortnight between a house being finished
+ * and its marketing photos existing — so it belongs on the card, not buried
+ * in a notes field.
+ */
+function permitAge(lead: Lead): { label: string; fresh: boolean } | null {
+  const d = lead.source_detail as { completedOn?: string } | null;
+  if (!d?.completedOn) return null;
+  const done = new Date(`${d.completedOn}T12:00:00`);
+  if (Number.isNaN(done.getTime())) return null;
+  const days = Math.max(0, Math.round((Date.now() - done.getTime()) / 86_400_000));
+  const label =
+    days === 0 ? 'permit closed today' : `permit closed ${days} day${days === 1 ? '' : 's'} ago`;
+  return { label, fresh: days <= 7 };
+}
+
 /** "2026-07-30" -> "Thu, Jul 30". Avoids parsing the human-readable prose. */
 function shortDate(iso: string | null | undefined): string | null {
   if (!iso) return null;
@@ -391,6 +408,21 @@ export default function Dashboard() {
                       <div className="gt-mono mt-1 truncate text-[10.5px] text-[var(--gt-muted)]">
                         <span className="text-[var(--gt-muted-soft)]">permit owner: </span>
                         {ownerOf(lead)}
+                      </div>
+                    )}
+
+                    {/* The timing IS the signal — the window is roughly the
+                        fortnight between a house being finished and having
+                        photos. Freshest ones read as urgent. */}
+                    {permitAge(lead) && (
+                      <div
+                        className={`gt-mono mt-0.5 text-[10.5px] ${
+                          permitAge(lead)!.fresh
+                            ? 'font-medium text-[var(--gt-blue)]'
+                            : 'text-[var(--gt-muted-soft)]'
+                        }`}
+                      >
+                        {permitAge(lead)!.label}
                       </div>
                     )}
 
