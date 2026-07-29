@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { BrandMark } from '@/components/Brand';
 import LastSweep from '@/components/LastSweep';
+import { looksLikeCompany } from '@/lib/mecklenburg';
 import type {
   Lead,
   Draft,
@@ -44,6 +45,40 @@ type BoardRow = PipelineEntry & {
 function ownerOf(lead: Lead): string | null {
   const d = lead.source_detail as { ownerOfRecord?: string | null } | null;
   return d?.ownerOfRecord?.trim() || null;
+}
+
+/**
+ * "No contact found" reads as one outcome, but it's actually two very
+ * different situations that need different words: a private individual the
+ * agent deliberately never searched for (a design choice, not a miss), vs a
+ * company whose contact just wasn't publicly findable (a real gap, and the
+ * "one more manual step" case worth naming honestly).
+ */
+function noContactReason(lead: Lead): { label: string; title: string } {
+  return noContactReasonForOwner(ownerOf(lead));
+}
+
+/** Shared by both the lead queue (full Lead) and pipeline cards (a narrower pick). */
+function noContactReasonForOwner(owner: string | null): { label: string; title: string } {
+  if (owner && looksLikeCompany(owner)) {
+    return {
+      label: `business, no public contact found (${owner})`,
+      title:
+        'The permit owner is a company. Enrichment searched for a public business contact ' +
+        'and found none within its search budget — a manual lookup (the county Home Builders ' +
+        'Association directory, BuildZoom, the company’s own site) would likely find one.',
+    };
+  }
+  if (owner) {
+    return {
+      label: `owner is an individual, not contacted`,
+      title:
+        `The permit owner (${owner}) appears to be a private individual, not a business. ` +
+        'The agent will not search for a private person’s personal contact details, only a ' +
+        'verified business one — this is by design, not a search failure.',
+    };
+  }
+  return { label: 'no contact found', title: 'No permit owner on file to evaluate.' };
 }
 
 /**
@@ -364,8 +399,9 @@ export default function Dashboard() {
                 </span>
               </div>
               <p className="mt-1 text-[11.5px] leading-snug text-[var(--gt-muted-soft)]">
-                Single-family permits completed in the last 14 days. Each badge shows what
-                the agent decided.
+                Every single-family permit completed in the last 14 days, whether or not it
+                went anywhere. The ones the agent actually drafted move down to the Pipeline
+                below.
               </p>
             </div>
 
@@ -460,7 +496,12 @@ export default function Dashboard() {
                           </span>
                         )
                       ) : lead.enrichment_status === 'insufficient_data' ? (
-                        <span className="gt-badge gt-badge-neutral">no contact found</span>
+                        <span
+                          className="gt-badge gt-badge-neutral !whitespace-normal text-left leading-tight"
+                          title={noContactReason(lead).title}
+                        >
+                          {noContactReason(lead).label}
+                        </span>
                       ) : null}
                       {lead.photo_count != null && (
                         <span className="gt-badge gt-badge-neutral">
@@ -619,7 +660,8 @@ export default function Dashboard() {
             </span>
           </div>
           <p className="mb-3 text-[11.5px] leading-snug text-[var(--gt-muted-soft)]">
-            The agent validated all of these as worth pursuing. Not all have a contact yet,
+            A subset of the Lead queue above: only the ones the agent judged worth pursuing
+            and actually drafted, not everything that was swept. Not all have a contact yet,
             since it will not chase down a private individual&apos;s personal details, only a
             verified business one.
           </p>
@@ -683,7 +725,24 @@ export default function Dashboard() {
                           {row.leads?.agent_email ? (
                             <span className="gt-badge gt-badge-green">ready to send</span>
                           ) : (
-                            <span className="gt-badge gt-badge-amber">needs a contact</span>
+                            (() => {
+                              const owner = (
+                                row.leads?.source_detail as { ownerOfRecord?: string } | null
+                              )?.ownerOfRecord?.trim();
+                              const reason = noContactReasonForOwner(owner ?? null);
+                              return (
+                                <span
+                                  className="gt-badge gt-badge-amber !whitespace-normal text-left leading-tight"
+                                  title={reason.title}
+                                >
+                                  {owner && looksLikeCompany(owner)
+                                    ? 'business, no contact yet'
+                                    : owner
+                                      ? 'owner is an individual'
+                                      : 'needs a contact'}
+                                </span>
+                              );
+                            })()
                           )}
                         </div>
                         {row.leads?.agent_email && (
