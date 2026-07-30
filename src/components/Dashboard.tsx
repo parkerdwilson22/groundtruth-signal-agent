@@ -444,9 +444,9 @@ export default function Dashboard() {
               {/* Cumulative across every run to date, not just the latest
                   sweep — every badge below reconciles to one of these three
                   numbers. */}
-              <p className="gt-mono mt-1.5 text-[10.5px] text-[var(--gt-muted-soft)]">
-                {draftedTotal} drafted · {heldBackTotal} held back by cap · {declinedTotal}{' '}
-                declined
+              <p className="gt-mono mt-1.5 text-[11.5px] font-medium text-[var(--gt-text)]">
+                All-time across every run: {draftedTotal} drafted, {heldBackTotal} held back by
+                cap, {declinedTotal} declined
               </p>
             </div>
 
