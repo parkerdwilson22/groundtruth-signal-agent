@@ -504,6 +504,7 @@ export default function Dashboard() {
                       <OutcomeBadge
                         outcome={leadOutcome[lead.id]}
                         hasContact={!!lead.agent_email}
+                        hasSourcedContact={!!lead.agent_email && !!lead.contact_source}
                       />
                       {/* A contact with no source URL is NOT the same as a
                           sourced one — the system says so rather than
@@ -718,7 +719,17 @@ export default function Dashboard() {
                     classifyOwner(owner ?? null, r.leads?.owner_permit_count ?? null).isBusiness
                   );
                 })
-                .sort((a, b) => Number(!!b.leads?.agent_email) - Number(!!a.leads?.agent_email));
+                .sort((a, b) => {
+                  // Sourced contact first, then unverified contact, then
+                  // business-reachable-by-lookup — matches the badge shown.
+                  const rank = (r: BoardRow) =>
+                    r.leads?.agent_email && r.leads?.contact_source
+                      ? 2
+                      : r.leads?.agent_email
+                        ? 1
+                        : 0;
+                  return rank(b) - rank(a);
+                });
               return (
                 <div
                   key={col.stage}
@@ -768,7 +779,16 @@ export default function Dashboard() {
 
                         <div className="mt-1.5">
                           {row.leads?.agent_email ? (
-                            <span className="gt-badge gt-badge-green">ready to send</span>
+                            row.leads?.contact_source ? (
+                              <span className="gt-badge gt-badge-green">ready to send</span>
+                            ) : (
+                              <span
+                                className="gt-badge gt-badge-amber"
+                                title="Contact predates source-tracking and has no verified source. Confirm before sending."
+                              >
+                                drafted, contact unverified
+                              </span>
+                            )
                           ) : (
                             (() => {
                               const owner = (
@@ -876,24 +896,45 @@ export default function Dashboard() {
  * construction has no findable contact yet, and the agent correctly refuses
  * to chase down a private individual's personal details.
  */
-function OutcomeBadge({ outcome, hasContact }: { outcome?: string; hasContact?: boolean }) {
+function OutcomeBadge({
+  outcome,
+  hasContact,
+  hasSourcedContact,
+}: {
+  outcome?: string;
+  hasContact?: boolean;
+  hasSourcedContact?: boolean;
+}) {
   if (!outcome) return <span className="gt-badge gt-badge-neutral">not yet run</span>;
 
+  // "Ready to send" and "contact · unverified" sitting side by side on the
+  // same card said two different things about the same draft. A contact
+  // with no source is not yet trustworthy, so it can't earn the confident
+  // green label — it gets the same amber, provisional badge as no contact
+  // at all, just with its own reason.
   const map: Record<string, { label: string; cls: string; title: string }> = {
-    signal_found: hasContact
+    signal_found: hasSourcedContact
       ? {
           label: 'ready to send',
           cls: 'gt-badge-green',
-          title: 'Signal found, contact verified. A Gmail draft is waiting for review.',
+          title: 'Signal found, contact verified with a source. A Gmail draft is waiting for review.',
         }
-      : {
-          label: 'validated, no contact yet',
-          cls: 'gt-badge-amber',
-          title:
-            'The agent judged this worth pitching and wrote the outreach, but found no ' +
-            'verifiable contact. Often means the owner is a private individual, and the ' +
-            'agent deliberately will not chase down personal contact details.',
-        },
+      : hasContact
+        ? {
+            label: 'drafted, contact unverified',
+            cls: 'gt-badge-amber',
+            title:
+              'Signal found and a draft exists, but the contact predates source-tracking and ' +
+              'has no verified source. Confirm it before sending.',
+          }
+        : {
+            label: 'validated, no contact yet',
+            cls: 'gt-badge-amber',
+            title:
+              'The agent judged this worth pitching and wrote the outreach, but found no ' +
+              'verifiable contact. Often means the owner is a private individual, and the ' +
+              'agent deliberately will not chase down personal contact details.',
+          },
     capped: {
       label: 'held back by cap',
       cls: 'gt-badge-amber',
