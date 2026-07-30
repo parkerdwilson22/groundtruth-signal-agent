@@ -505,6 +505,9 @@ export default function Dashboard() {
                         outcome={leadOutcome[lead.id]}
                         hasContact={!!lead.agent_email}
                         hasSourcedContact={!!lead.agent_email && !!lead.contact_source}
+                        ownerIsBusiness={
+                          classifyOwner(ownerOf(lead), lead.owner_permit_count ?? null).isBusiness
+                        }
                       />
                       {/* A contact with no source URL is NOT the same as a
                           sourced one — the system says so rather than
@@ -900,10 +903,12 @@ function OutcomeBadge({
   outcome,
   hasContact,
   hasSourcedContact,
+  ownerIsBusiness,
 }: {
   outcome?: string;
   hasContact?: boolean;
   hasSourcedContact?: boolean;
+  ownerIsBusiness?: boolean;
 }) {
   if (!outcome) return <span className="gt-badge gt-badge-neutral">not yet run</span>;
 
@@ -912,6 +917,12 @@ function OutcomeBadge({
   // with no source is not yet trustworthy, so it can't earn the confident
   // green label — it gets the same amber, provisional badge as no contact
   // at all, just with its own reason.
+  //
+  // "No contact yet" implies a search still in progress — true for a
+  // business (a manual lookup could still find someone) but wrong for a
+  // private individual, where the agent has permanently decided not to
+  // search. Saying "yet" there contradicts the secondary badge next to it,
+  // which correctly says "not contacted" with no such implication.
   const map: Record<string, { label: string; cls: string; title: string }> = {
     signal_found: hasSourcedContact
       ? {
@@ -927,14 +938,23 @@ function OutcomeBadge({
               'Signal found and a draft exists, but the contact predates source-tracking and ' +
               'has no verified source. Confirm it before sending.',
           }
-        : {
-            label: 'validated, no contact yet',
-            cls: 'gt-badge-amber',
-            title:
-              'The agent judged this worth pitching and wrote the outreach, but found no ' +
-              'verifiable contact. Often means the owner is a private individual, and the ' +
-              'agent deliberately will not chase down personal contact details.',
-          },
+        : ownerIsBusiness
+          ? {
+              label: 'validated, no contact yet',
+              cls: 'gt-badge-amber',
+              title:
+                'The agent judged this worth pitching and wrote the outreach. The owner is a ' +
+                'business, so a contact was searched for but not found within budget — a ' +
+                'manual lookup may still find one.',
+            }
+          : {
+              label: 'validated, not contacted',
+              cls: 'gt-badge-amber',
+              title:
+                'The agent judged this worth pitching and wrote the outreach, but the owner ' +
+                'is a private individual. The agent deliberately does not search for a ' +
+                'private person’s contact details, so no search was made.',
+            },
     capped: {
       label: 'held back by cap',
       cls: 'gt-badge-amber',
