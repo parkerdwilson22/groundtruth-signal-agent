@@ -105,7 +105,7 @@ export default function LastSweep() {
       </div>
 
       <p className="border-t border-[var(--gt-border)] px-4 py-2 text-[11.5px] text-[var(--gt-muted)]">
-        Ran unattended. Nobody started this.{' '}
+        Built to run unattended on a schedule, no human in the loop for this step.{' '}
         {batch.errors === 0 ? 'No errors. ' : `${batch.errors} step(s) errored. `}
         It ranks what it finds by confidence and only drafts the top {cap ?? 3} a day, so the
         rest are deliberately held rather than sent. Every outcome is logged separately, so
