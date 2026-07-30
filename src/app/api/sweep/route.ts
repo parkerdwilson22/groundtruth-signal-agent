@@ -377,6 +377,20 @@ export async function POST(req: Request) {
       }
     }
 
+    // A day with zero genuinely new permits writes nothing above — every
+    // recordRun call above lives inside a per-lead loop, so no new leads
+    // means no rows at all. That leaves a real, successful, unattended run
+    // indistinguishable from the cron never firing, which is exactly the
+    // "found nothing vs broke" confusion the rest of this table exists to
+    // prevent. One unconditional row per invocation closes that gap.
+    await recordRun({
+      batchId,
+      leadId: null,
+      status: 'no_signal',
+      step: 'sweep-complete',
+      errorDetail: `swept ${summary.swept}, ${summary.newLeads} new, ${summary.signalFound} drafted`,
+    });
+
     return NextResponse.json(summary);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
