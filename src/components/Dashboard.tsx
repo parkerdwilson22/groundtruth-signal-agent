@@ -383,7 +383,7 @@ export default function Dashboard() {
               <span className="gt-badge gt-badge-neutral">
                 {sweptCount} of {leads.length} leads auto-sourced
               </span>
-              <span className="gt-badge gt-badge-blue">Runs daily · 7:00 AM</span>
+              <span className="gt-badge gt-badge-blue">Designed to run daily</span>
             </div>
           </div>
 
