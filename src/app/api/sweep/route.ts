@@ -4,7 +4,7 @@ import { recordRun, loadSignalTypes } from '@/lib/runs';
 import { runSignalDetection, runDraft } from '@/lib/agent-steps';
 import { fetchShootWindow } from '@/lib/weather';
 import { enrichAddress } from '@/lib/enrich';
-import { fetchRecentCompletions, cityForZip } from '@/lib/mecklenburg';
+import { fetchRecentCompletions, cityForZip, fetchOwnerPermitCounts } from '@/lib/mecklenburg';
 import { outreachPath } from '@/lib/outreach';
 import { toEasternIso } from '@/lib/time';
 import type { Lead, SignalResult } from '@/lib/types';
@@ -80,6 +80,24 @@ export async function POST(req: Request) {
 
     const fresh = completions.filter((c) => !knownRefs.has(c.parcelId));
 
+    // Owner filing history: deterministic, free, and the only thing that can
+    // tell a one-man builder from a homeowner who built their own house.
+    // A failure here must not sink the sweep, so it degrades to null counts.
+    let ownerCounts: Record<string, number> = {};
+    if (fresh.length) {
+      try {
+        ownerCounts = await fetchOwnerPermitCounts();
+      } catch (err) {
+        await recordRun({
+          batchId,
+          leadId: null,
+          status: 'error',
+          step: 'owner-history',
+          errorDetail: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
     // --- Insert as new leads (deterministic — no AI judgment here) ----------
     const newLeads: Lead[] = [];
     for (const c of fresh) {
@@ -102,6 +120,9 @@ export async function POST(req: Request) {
           source: SOURCE,
           source_ref: c.parcelId,
           source_detail: c,
+          owner_permit_count:
+            ownerCounts[c.ownerOfRecord?.trim().replace(/\s+/g, ' ').toLowerCase() ?? ''] ??
+            null,
           enrichment_status: 'pending',
         })
         .select()

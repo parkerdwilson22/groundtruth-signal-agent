@@ -34,6 +34,12 @@ export interface Lead {
   contact_type: string | null;
   /** URL the contact details were actually found at — no source, no contact. */
   contact_source: string | null;
+  /**
+   * Permits this owner of record filed in the county lookback window. 1
+   * suggests a homeowner building their own house, 2+ suggests a builder.
+   * Null means not yet counted, which is not the same as zero.
+   */
+  owner_permit_count: number | null;
   /** 'pending' | 'enriched' | 'insufficient_data' — never silently blank (§11.9). */
   enrichment_status: string | null;
   enrichment_notes: string | null;

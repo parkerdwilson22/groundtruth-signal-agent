@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { BrandMark } from '@/components/Brand';
 import LastSweep from '@/components/LastSweep';
-import { looksLikeCompany } from '@/lib/mecklenburg';
+import { classifyOwner } from '@/lib/mecklenburg';
 import type {
   Lead,
   Draft,
@@ -30,6 +30,7 @@ type BoardRow = PipelineEntry & {
     | 'contact_type'
     | 'contact_source'
     | 'source_detail'
+    | 'owner_permit_count'
   > | null;
   drafts:
     | (Pick<Draft, 'outreach_subject' | 'best_shoot_window' | 'shoot_date_iso'> & {
@@ -55,27 +56,33 @@ function ownerOf(lead: Lead): string | null {
  * "one more manual step" case worth naming honestly).
  */
 function noContactReason(lead: Lead): { label: string; title: string } {
-  return noContactReasonForOwner(ownerOf(lead));
+  return noContactReasonForOwner(ownerOf(lead), lead.owner_permit_count ?? null);
 }
 
 /** Shared by both the lead queue (full Lead) and pipeline cards (a narrower pick). */
-function noContactReasonForOwner(owner: string | null): { label: string; title: string } {
-  if (owner && looksLikeCompany(owner)) {
+function noContactReasonForOwner(
+  owner: string | null,
+  permitCount: number | null,
+): { label: string; title: string } {
+  const { isBusiness, basis } = classifyOwner(owner, permitCount);
+  if (owner && isBusiness) {
     return {
       label: `business, no public contact found (${owner})`,
       title:
-        'The permit owner is a company. Enrichment searched for a public business contact ' +
-        'and found none within its search budget — a manual lookup (the county Home Builders ' +
-        'Association directory, BuildZoom, the company’s own site) would likely find one.',
+        `${basis} Enrichment searched for a public business contact and found none within ` +
+        'its search budget; a manual lookup (the county Home Builders Association directory, ' +
+        'BuildZoom, the company’s own site) would likely find one.',
     };
   }
   if (owner) {
     return {
-      label: `owner is an individual, not contacted`,
+      label:
+        permitCount === 1
+          ? 'owner built their own home, not contacted'
+          : 'owner is an individual, not contacted',
       title:
-        `The permit owner (${owner}) appears to be a private individual, not a business. ` +
-        'The agent will not search for a private person’s personal contact details, only a ' +
-        'verified business one — this is by design, not a search failure.',
+        `${basis} The agent will not search for a private person’s personal contact details, ` +
+        'only a verified business one. This is by design, not a search failure.',
     };
   }
   return { label: 'no contact found', title: 'No permit owner on file to evaluate.' };
@@ -179,7 +186,7 @@ export default function Dashboard() {
       .select(
         'id, lead_id, draft_id, stage, stage_locked, updated_at, ' +
           'leads(address, city, state, price, agent_email, listing_agent, contact_type, ' +
-          'contact_source, source_detail), ' +
+          'contact_source, source_detail, owner_permit_count), ' +
           'drafts(outreach_subject, best_shoot_window, shoot_date_iso, ' +
           'signals(signal_type, confidence, reasoning))',
       )
@@ -706,7 +713,10 @@ export default function Dashboard() {
                   const owner = (
                     r.leads?.source_detail as { ownerOfRecord?: string } | null
                   )?.ownerOfRecord?.trim();
-                  return !!r.leads?.agent_email || (!!owner && looksLikeCompany(owner));
+                  return (
+                    !!r.leads?.agent_email ||
+                    classifyOwner(owner ?? null, r.leads?.owner_permit_count ?? null).isBusiness
+                  );
                 })
                 .sort((a, b) => Number(!!b.leads?.agent_email) - Number(!!a.leads?.agent_email));
               return (
@@ -764,16 +774,21 @@ export default function Dashboard() {
                               const owner = (
                                 row.leads?.source_detail as { ownerOfRecord?: string } | null
                               )?.ownerOfRecord?.trim();
-                              const reason = noContactReasonForOwner(owner ?? null);
+                              const reason = noContactReasonForOwner(
+                                owner ?? null,
+                                row.leads?.owner_permit_count ?? null,
+                              );
                               return (
                                 <span
                                   className="gt-badge gt-badge-amber !whitespace-normal text-left leading-tight"
                                   title={reason.title}
                                 >
-                                  {owner && looksLikeCompany(owner)
+                                  {owner &&
+                                  classifyOwner(owner, row.leads?.owner_permit_count ?? null)
+                                    .isBusiness
                                     ? 'business, no contact yet'
                                     : owner
-                                      ? 'owner is an individual'
+                                      ? 'built their own home'
                                       : 'needs a contact'}
                                 </span>
                               );
