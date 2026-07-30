@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { recordRun } from '@/lib/runs';
 import { toEasternIso } from '@/lib/time';
 import { runDraft } from '@/lib/agent-steps';
+import { outreachPath } from '@/lib/outreach';
 import type { Lead, Signal, ShootWindow, DraftResult, PipelineEntry } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -85,6 +86,26 @@ export async function POST(req: Request) {
           stage: existing.stage,
         },
         { status: 409 },
+      );
+    }
+
+    // --- Is there anyone to send this to? -----------------------------------
+    // Checked BEFORE the model call, not after: drafting for a private
+    // individual we have decided not to contact spends a request and then
+    // leaves an unsendable draft (empty To: field) in a real inbox. The
+    // manual "Run agent" path skips enrichment entirely, so without this it
+    // would draft for anybody.
+    const path = outreachPath(lead);
+    if (!path.reachable) {
+      await recordRun({
+        leadId,
+        status: 'no_signal',
+        step: 'draft',
+        errorDetail: path.reason,
+      });
+      return NextResponse.json(
+        { error: path.reason, noOutreachPath: true },
+        { status: 422 },
       );
     }
 

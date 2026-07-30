@@ -5,6 +5,7 @@ import { runSignalDetection, runDraft } from '@/lib/agent-steps';
 import { fetchShootWindow } from '@/lib/weather';
 import { enrichAddress } from '@/lib/enrich';
 import { fetchRecentCompletions, cityForZip } from '@/lib/mecklenburg';
+import { outreachPath } from '@/lib/outreach';
 import { toEasternIso } from '@/lib/time';
 import type { Lead, SignalResult } from '@/lib/types';
 
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
     signalFound: 0,
     noSignal: 0,
     declinedAfterEnrichment: 0,
+    noOutreachPath: 0,
     capped: 0,
     errors: 0,
     processed: [] as { address: string; outcome: string; outreachSubject?: string }[],
@@ -249,6 +251,22 @@ export async function POST(req: Request) {
           });
           summary.noSignal++;
           summary.declinedAfterEnrichment++;
+          continue;
+        }
+
+        // Enrichment has now run, so this is the first point where we know
+        // whether anyone is actually reachable. No path means no draft: a
+        // Gmail draft with an empty To: field is worse than nothing.
+        const path = outreachPath(lead);
+        if (!path.reachable) {
+          await recordRun({
+            batchId,
+            leadId: lead.id,
+            status: 'no_signal',
+            step: 'no-outreach-path',
+            errorDetail: path.reason,
+          });
+          summary.noOutreachPath++;
           continue;
         }
 

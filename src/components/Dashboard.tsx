@@ -288,11 +288,31 @@ export default function Dashboard() {
       // 3 — draft (AI judgment)
       setActiveStep(2);
       say('Drafting shot list and outreach', 'note');
-      const result = await post<DraftResult & { draftId: string }>('/api/draft', {
-        leadId: selected.id,
-        signalId: signal.signalId,
-        shootWindow: win,
+
+      // A refusal here is a deliberate decision, not a failure: there is
+      // nobody to send to, so it reads as a note rather than a red error.
+      const draftRes = await fetch('/api/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: selected.id,
+          signalId: signal.signalId,
+          shootWindow: win,
+        }),
       });
+      const draftJson = await draftRes.json();
+
+      if (!draftRes.ok) {
+        if (draftJson.noOutreachPath) {
+          say(draftJson.error, 'warn');
+          say('Stopped before drafting. Nothing was written and nothing was sent.', 'note');
+          setActiveStep(-1);
+          return;
+        }
+        throw new Error(draftJson.error ?? `/api/draft failed (${draftRes.status})`);
+      }
+
+      const result = draftJson as DraftResult & { draftId: string };
       setDraft({ ...result, signalType: signal.signalType });
       setDoneCount(3);
 
