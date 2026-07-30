@@ -85,6 +85,36 @@ function addMinutes(hhmmStr: string, minutes: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+function fromMinutes(total: number): string {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, total));
+  return `${String(Math.floor(clamped / 60)).padStart(2, '0')}:${String(clamped % 60).padStart(2, '0')}`;
+}
+
+function toMinutes(hhmmStr: string): number {
+  const [h, m] = hhmmStr.split(':').map(Number);
+  return h * 60 + m;
+}
+
+/**
+ * Snap a window outward to the nearest half hour: start rounds down, end
+ * rounds up. Sunset lands on an arbitrary minute, so the raw arithmetic
+ * produces windows like "6:43 PM to 8:13 PM" — which is not how anyone
+ * schedules a shoot. A human writes "6:30 to 8:30", so the window is
+ * communicated the way it would actually be agreed.
+ *
+ * Rounding outward can push the end a few minutes past sunset. That is
+ * intentional and safe for this use: the light immediately after sunset is
+ * usable (civil twilight), and the end of the window is when to be packing
+ * up, not the last second the shot is possible.
+ */
+function snapWindowToHalfHour(start: string, end: string): { start: string; end: string } {
+  const HALF = 30;
+  return {
+    start: fromMinutes(Math.floor(toMinutes(start) / HALF) * HALF),
+    end: fromMinutes(Math.ceil(toMinutes(end) / HALF) * HALF),
+  };
+}
+
 export async function fetchShootWindow(
   lat: number,
   lon: number,
@@ -233,6 +263,11 @@ export async function fetchShootWindow(
     timeRationale += ` Note: daily peak winds exceed ${WIND_MARGINAL_KMH} km/h — check conditions before flying.`;
   }
 
+  // Snap to half-hour boundaries last, after the wind check has used the real
+  // arithmetic window. Scheduling language ("6:30 to 8:30") should not leak
+  // back into the meteorology.
+  const snapped = snapWindowToHalfHour(startLocal, endLocal);
+
   return {
     dateIso: best.date,
     date: new Date(`${best.date}T12:00:00`).toLocaleDateString('en-US', {
@@ -245,8 +280,8 @@ export async function fetchShootWindow(
     windKmh: Math.round(best.windKmh),
     sunrise: best.sunrise,
     sunset: best.sunset,
-    startLocal,
-    endLocal,
+    startLocal: snapped.start,
+    endLocal: snapped.end,
     timeRationale,
   };
 }
