@@ -369,6 +369,15 @@ export default function Dashboard() {
   ).length;
   const sweptCount = leads.filter((l) => l.source === 'mecklenburg_permits').length;
 
+  // Cumulative counts across every lead ever swept, not just the latest run.
+  // The "Last automated sweep" panel above describes one invocation only
+  // (today's run drafted 1, held back 0) — sitting a few pixels from a queue
+  // showing 3 held-back badges from earlier runs, with nothing explaining
+  // the gap. This reconciles directly against what's on screen below it.
+  const draftedTotal = leads.filter((l) => leadOutcome[l.id] === 'signal_found').length;
+  const heldBackTotal = leads.filter((l) => leadOutcome[l.id] === 'capped').length;
+  const declinedTotal = leads.filter((l) => leadOutcome[l.id] === 'no_signal').length;
+
   return (
     <div className="min-h-screen">
       {/* ---------- header ---------- */}
@@ -431,6 +440,13 @@ export default function Dashboard() {
                 Every single-family permit completed in the last 14 days, whether or not it
                 went anywhere. The ones the agent actually drafted move down to the Pipeline
                 below.
+              </p>
+              {/* Cumulative across every run to date, not just the latest
+                  sweep — every badge below reconciles to one of these three
+                  numbers. */}
+              <p className="gt-mono mt-1.5 text-[10.5px] text-[var(--gt-muted-soft)]">
+                {draftedTotal} drafted · {heldBackTotal} held back by cap · {declinedTotal}{' '}
+                declined
               </p>
             </div>
 
